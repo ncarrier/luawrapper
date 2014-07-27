@@ -1,4 +1,4 @@
-for k, v in pairs(package.loaded) do print(k, v) end
+#!/usr/bin/lua
 
 foo = require "foo"
 
