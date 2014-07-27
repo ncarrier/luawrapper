@@ -382,7 +382,11 @@ static int run_script(lua_State *L, const struct lua_script *script, int argc,
 	if (debug)
 		printf("main script start\n");
 	lua_call(L, 1, 1);
-	res = luaL_checkint(L, -1);
+	/*
+	 * if the main script returns an exit status, use it as the ours,
+	 * otherwise, consider the execution went well
+	 */
+	res = lua_type(L, -1) == LUA_TNUMBER ? luaL_checkint(L, -1) : 0;
 
 	lua_settop(L, 0);
 
