@@ -1,0 +1,22 @@
+Luawrapper is a way to build a fully autonomous statically precompiled binary,
+able to launch an embedded lua script. To do so, it must contain both the C and
+lua libraries that the lua script depends on.
+
+C libraries must be compiled into the main executable. They must also be
+declared in the lw_dependencies array. Each entry must list the module name, as
+when referenced by a call to require and the luaopen_ function, responsible of
+loading the module.
+
+Once the wrapper has been compiled, the lua script and it's lua dependencies
+must be wrapped into it. For this purpose, one must use the build_wrapper
+provided. It will append the scripts to the wrapper, with the relevant metadata.
+
+usage: 
+
+./build_wrapper.sh -o outfile luawrapper dep1.lua dep2.lua [...] main.lua
+
+Then one can use outfile like he would use main.lua, but it doesn't rely on any
+dependency.
+
+Note: lw_dependency is needed because we can't load luaopen_XXX functions with
+dlopen, when the executable is built statically.
