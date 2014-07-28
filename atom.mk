@@ -5,6 +5,7 @@ LOCAL_PATH := $(call my-dir)
 ###############################################################################
 
 # TODO doesn't work as is, because make final strips (and breaks) the executable
+# TODO breaks when parallelized
 
 include $(CLEAR_VARS)
 
@@ -19,42 +20,20 @@ LOCAL_SRC_FILES := luawrapper.c \
 
 luawrapper_no_dep_BUILD_DIR := $(call local-get-build-dir)
 luawrapper_no_dep := $(luawrapper_no_dep_BUILD_DIR)/$(LOCAL_MODULE)
-luawrapper_no_dep_staging := $(TARGET_OUT_STAGING)/usr/bin/$(LOCAL_MODULE)
-luawrapper_no_dep_done := $(luawrapper_no_dep_BUILD_DIR)/$(LOCAL_MODULE).done
-luawrapper_no_dep_absolute_scr_files := \
-	$(foreach s,$(LOCAL_SRC_FILES),$(LOCAL_PATH)/$(s))
 luawrapper_no_dep_dependencies := \
-	$(luawrapper_no_dep)-empty \
+	$(luawrapper_no_dep) \
 	$(LOCAL_PATH)/test/no_dep/main.lua
 
-$(luawrapper_no_dep_done): $(luawrapper_no_dep_staging)
-	$(Q) touch $@
+LOCAL_LDFLAGS := -static -lm
 
-$(luawrapper_no_dep_staging): $(luawrapper_no_dep)
-	$(Q) cp -f $< $@
+define LOCAL_CMD_PRE_INSTALL
+	echo "generate full wrapper for $(PRIVATE_MODULE)"
+	$(Q) $(PRIVATE_PATH)/build_wrapper.sh -o $(luawrapper_no_dep).tmp \
+		$(luawrapper_no_dep_dependencies)
+	$(Q) mv $(luawrapper_no_dep).tmp $(luawrapper_no_dep)
+endef
 
-$(luawrapper_no_dep)-empty: $(luawrapper_no_dep_absolute_scr_files)
-	@echo "compile empty wrapper for $(PRIVATE_MODULE)"
-	$(Q) mkdir -p $(luawrapper_no_dep_BUILD_DIR)
-	$(Q) $(CCACHE) $(TARGET_CC) \
-		-I$(PRIVATE_PATH) -I$(PRIVATE_PATH)/lua -Os \
-		$^ -o $@ \
-		-static -lm -Wl,--gc-sections
-	$(Q) $(TARGET_STRIP) $@
-
-$(luawrapper_no_dep):$(luawrapper_no_dep_dependencies)
-	@echo "generate full wrapper for $(PRIVATE_MODULE)"
-	$(Q) $(PRIVATE_PATH)/build_wrapper.sh -o $@ $^
-
-.PHONY: $(PACKAGE_NAME)-clean
-# TODO does remove only luawrapper_no_dep_done, why ?
-$(PACKAGE_NAME)-clean:
-	$(Q) rm -Rf $(luawrapper_no_dep_staging)
-	$(Q) rm -Rf $(luawrapper_no_dep_done)
-	$(Q) rm -Rf $(luawrapper_no_dep)-empty
-	$(Q) rm -Rf $(luawrapper_no_dep)
-
-include $(BUILD_CUSTOM)
+include $(BUILD_EXECUTABLE)
 
 ###############################################################################
 # luawrapper-lua_dep
