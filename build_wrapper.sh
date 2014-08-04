@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# TODO update documentation
+
 # Script for embedding a lua script into a launcher for the script, in order to
 # allow to build a fully autonomous, statically "compiled" script. The final
 # wrapped "script" is written to standard output, or to the file passed in the
@@ -22,28 +24,15 @@
 
 #set -x
 
-# append unsigned size in 8 bytes, big endian, to the end
-append_size() {
-	printf "%016x" $1 | xxd -revert -plain >> ${output}
-}
-
-end_string() {
-	printf "00"  | xxd -r -p >> ${output}
-}
-
-append_string() {
-	echo -n $1 >> ${output}
-	end_string
-}
-
-output="/proc/self/fd/1"
 if [ "$1" = "-o" ]; then
 	shift
 	output=$1
-	echo "output to file $output"
 	shift
-	rm -f $output
+else
+	output="lw.out"
 fi
+rm -f $output
+echo "output to file $output"
 
 launcher=$1
 first_lua_file=$2
@@ -54,31 +43,10 @@ if [ ! -f "${launcher}" ] || [ ! -f "${first_lua_file}" ]; then
 	exit 1
 fi
 
-# header
-cat ${launcher} >> ${output}
-
-# output size | name | code
 shift
+cp -f ${launcher} ${output}
 for script in "$@" ; do
-	name="$(basename $script | sed 's/\.lua*//g')"
-	name_size=${#name}
-	script_size=$(stat -c%s ${script})
-	#    tot sz   name size     nul  script size
-	size=$((8 + ${name_size} + 1 + ${script_size}))
-
-	# SIZE_X
-	append_size ${size}
-	# module X name
-	append_string ${name}
-	# lua code
-	cat ${script} >> ${output}
+	name="lw_$(basename $script | sed 's/\.lua*//g')"
+	echo "add section ${name} for ${script}"
+	objcopy --add-section ${name}=${script} ${output} ${output}
 done
-
-# footer : stop + launcher size (i.e. start of lua scripts)
-append_size 0
-launcher_size=$(stat -c%s ${launcher})
-append_size ${launcher_size}
-
-if [ -f ${output} ]; then
-	chmod +x ${output}
-fi
