@@ -28,7 +28,8 @@ LOCAL_LDFLAGS := -static -lm
 
 define LOCAL_CMD_PRE_INSTALL
 	echo "generate full wrapper for $(PRIVATE_MODULE)"
-	$(Q) $(PRIVATE_PATH)/build_wrapper.sh -o $(luawrapper_no_dep).tmp \
+	$(Q) TARGET_OBJCOPY=$(TARGET_OBJCOPY) \
+		$(PRIVATE_PATH)/build_wrapper.sh -o $(luawrapper_no_dep).tmp \
 		$(luawrapper_no_dep_dependencies)
 	$(Q) mv $(luawrapper_no_dep).tmp $(luawrapper_no_dep)
 endef

@@ -48,5 +48,5 @@ cp -f ${launcher} ${output}
 for script in "$@" ; do
 	name="lw_$(basename $script | sed 's/\.lua*//g')"
 	echo "add section ${name} for ${script}"
-	objcopy --add-section ${name}=${script} ${output} ${output}
+	${TARGET_OBJCOPY} --add-section ${name}=${script} ${output} ${output}
 done
