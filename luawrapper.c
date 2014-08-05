@@ -150,6 +150,43 @@ static void stack_dump(lua_State *L)
 }
 
 /**
+ * Read a script from it's elf section and store it
+ * @param script In output, contains the lua script loaded
+ * @param scn section containing the script
+ * @param shdr section header
+ * @param name name of the script
+ */
+static void load_script(struct lua_script *script, Elf_Scn *scn,
+		GElf_Shdr *shdr, const char *name)
+{
+	unsigned i;
+	Elf_Data *data;
+	char *p;
+
+	script->name = strdup(name + strlen(LUA_WRAPPER_SECTION_PREFIX));
+	if (script->name == NULL)
+		error(EXIT_FAILURE, errno, "strdup");
+	script->code = calloc(shdr->sh_size + 1, 1);
+	if (script->name == NULL)
+		error(EXIT_FAILURE, errno, "calloc");
+
+	script->code[shdr->sh_size] = '\0';
+	data = NULL;
+	i = 0;
+	while (i < shdr->sh_size && (data = elf_getdata(scn, data)) != NULL) {
+		p = data->d_buf;
+		while (p < (char *)data->d_buf + data->d_size) {
+			script->code[i] = *p;
+			i++;
+			p++;
+		}
+	}
+	remove_shebang(script->code);
+	// TODO remove the replace_dots once naming the section is possible
+	replace_dots_with_underscores(script->name);
+}
+
+/**
  * Loads all the lua scripts present in the program file
  * @param scripts in output, contains an allocated array, containing all the
  * scripts loaded, ending with a {NULL, NULL} script. The array must be freed
@@ -167,12 +204,7 @@ static int load_scripts(struct lua_script **scripts)
 	GElf_Shdr shdr;
 	const char *name;
 	uint32_t nb_scripts = 0;
-	unsigned i;
-	Elf_Data *data;
-	char *p;
 	struct lua_script *script;
-
-	/* TODO refactor (heavily)... */
 
 	ev = elf_version(EV_CURRENT);
 	if (ev == EV_NONE)
@@ -216,28 +248,9 @@ static int load_scripts(struct lua_script **scripts)
 					sizeof(struct lua_script));
 			if (*scripts == NULL)
 				error(EXIT_FAILURE, errno, "realloc");
-			/* TODO check allocs */
 			script = *scripts + (nb_scripts - 1);
-			script->name = strdup(name +
-					strlen(LUA_WRAPPER_SECTION_PREFIX));
-			script->code = calloc(shdr.sh_size + 1, 1);
 
-			script->code[shdr.sh_size] = '\0';
-			data = NULL;
-			i = 0;
-			while (i < shdr.sh_size &&
-					(data = elf_getdata(scn, data)) != NULL) {
-				p = (char *)data->d_buf;
-				while (p < (char *)data->d_buf + data->d_size) {
-					script->code[i] = *p;
-					i++;
-					p++;
-				}
-			}
-			remove_shebang(script->code);
-			// TODO remove the replace_dots once naming the section
-			// is possible
-			replace_dots_with_underscores(script->name);
+			load_script(script, scn, &shdr, name);
 		}
 	}
 
