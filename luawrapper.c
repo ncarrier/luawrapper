@@ -6,7 +6,9 @@
  * @author nicolas.carrier@parrot.com
  * @copyright Copyright (C) 2013 Parrot S.A.
  */
-#include <byteswap.h>
+/* TODO cleanup headers */
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <inttypes.h>
 #include <error.h>
@@ -15,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+#include <gelf.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -27,6 +31,12 @@
  * @brief set to true for printing debug traces
  */
 static bool debug;
+
+/**
+ * @def LUA_WRAPPER_SECTION_PREFIX
+ * @brief prefix for the name of the elf sections read by luawrapper
+ */
+#define LUA_WRAPPER_SECTION_PREFIX "lw_"
 
 /**
  * @def LUA_WRAPPER_DEBUG_ENV
@@ -59,35 +69,31 @@ struct lua_script {
 };
 
 /**
- * If the code of a script starts with a shebang, move the start of the code at
- * the end of the first line.
+ * If the code of a script starts with a shebang, replace all the content with
+ * space up to the end of the first line.
  * @note if the entire script is _only_ a shebang, code will be an empty string
- * @param code in input, points to the start of the code just read, in output,
- * points after the end of the first line, if it is a shebang
+ * @param code in input, modified in output
  */
-static void remove_shebang(char **code)
+static void remove_shebang(char *code)
 {
 	size_t len;
-	char *c;
 
-	if (code == NULL || *code == NULL)
+	if (code == NULL)
 		return;
 
-	c = *code;
-	len = strlen(c);
+	len = strlen(code);
 	if (len < 2)
 		return;
 
 	/* non shebang */
-	if (c[0] != '#' || c[1] != '!')
+	if (code[0] != '#' || code[1] != '!')
 		return;
 
 	/* skip all chars until newline or end of string */
-	while (*c != '\n' && *c != '\0')
-		c++;
+	while (*code != '\n' && *code != '\0')
+		*(code++) = ' ';
 
 	/* don't strip the newline char so that the line indexes don't change */
-	*code = c;
 }
 
 /**
@@ -102,45 +108,6 @@ static void replace_dots_with_underscores(char *name)
 		if (*c == '_')
 			*c = '.';
 	} while (--c > name);
-}
-
-/**
- * Reads a lua script section of the program file.
- * @param self file of the program
- * @param script in input, must point to a valid storage for a script, in
- * output, contains the script just loaded
- * @return false if there is no script anymore, in this case, both name and code
- * are set to NULL
- */
-static bool load_script(FILE *self, struct lua_script *script)
-{
-	int ret;
-	uint64_t script_size;
-
-	script->code = script->name = NULL;
-
-	ret = fread(&script_size, sizeof(uint64_t), 1, self);
-	if (ret != 1)
-		error(EXIT_FAILURE, 0, "can't read program size");
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	script_size = bswap_64(script_size);
-#endif
-	if (script_size == STOP)
-		return false;
-
-	script->name = calloc(1, script_size + 1);
-	if (script->name == NULL)
-		error(EXIT_FAILURE, errno, "can't allocate room for script");
-
-	ret = fread(script->name, script_size - sizeof(uint64_t), 1, self);
-	if (ret != 1)
-		error(EXIT_FAILURE, 0, "can't read lua script");
-	script->code = script->name + strlen(script->name) + 1;
-
-	remove_shebang(&script->code);
-	replace_dots_with_underscores(script->name);
-
-	return true;
 }
 
 /* dumps a stack non-recursively, printing only the type of complex elements */
@@ -191,43 +158,96 @@ static void stack_dump(lua_State *L)
  */
 static int load_scripts(struct lua_script **scripts)
 {
-	FILE *self;
-	int ret;
-	uint64_t program_size;
+	unsigned ev;
+	int fd;
+	Elf *e;
+	Elf_Kind ek;
+	size_t shstrndx;
+	Elf_Scn *scn;
+	GElf_Shdr shdr;
+	const char *name;
 	uint32_t nb_scripts = 0;
+	unsigned i;
+	Elf_Data *data;
+	char *p;
+	struct lua_script *script;
 
-	self = fopen(SELF_EXE, "rbe");
-	if (self == NULL)
-		error(EXIT_FAILURE, errno, "can't open %s", SELF_EXE);
+	/* TODO refactor (heavily)... */
 
-	ret = fseek(self, -sizeof(uint64_t), SEEK_END);
-	if (ret == -1)
-		error(EXIT_FAILURE, errno, "can't seek to program's size");
+	ev = elf_version(EV_CURRENT);
+	if (ev == EV_NONE)
+		error(EXIT_FAILURE, 0, "elf_version failed");
 
-	ret = fread(&program_size, sizeof(uint64_t), 1, self);
-	if (ret != 1)
-		error(EXIT_FAILURE, 0, "can't read program size");
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-	program_size = bswap_64(program_size);
-#endif
+	fd = open(SELF_EXE, O_RDONLY, 0);
+	if (fd < 0)
+		error(EXIT_FAILURE, 0, "opening "SELF_EXE" failed");
 
-	/* jump to the start of the first script */
-	ret = fseek(self, program_size, SEEK_SET);
-	if (ret == -1)
-		error(EXIT_FAILURE, errno, "can't seek to lua script");
+	e = elf_begin(fd, ELF_C_READ, NULL);
+	if (e == NULL)
+		error(EXIT_FAILURE, 0, "elf_begin failed: %s", elf_errmsg(-1));
+
+	ek = elf_kind(e);
+	if (ek != ELF_K_ELF)
+		error(EXIT_FAILURE, 0, SELF_EXE" isn't an elf object");
+
+	if (elf_getshdrstrndx(e, &shstrndx) != 0)
+		error(EXIT_FAILURE, 0, "elf_getshdrstrndx: %s", elf_errmsg(-1));
 
 	*scripts = NULL;
-	do {
-		nb_scripts++;
-		*scripts = realloc(*scripts,
-				(nb_scripts + 1) * sizeof(struct lua_script));
-		if (*scripts == NULL)
-			error(EXIT_FAILURE, errno, "realloc");
-	} while (load_script(self, (*scripts) + nb_scripts - 1));
+	for (scn = elf_nextscn(e, NULL);
+			scn != NULL;
+			scn = elf_nextscn(e, scn)) {
+		if (gelf_getshdr(scn, &shdr) != &shdr)
+			error(EXIT_FAILURE, 0, "gelf_getshdr: %s",
+					elf_errmsg(-1));
 
-	fclose(self);
+		name = elf_strptr(e, shstrndx, shdr.sh_name);
+		if (name == NULL)
+			error(EXIT_FAILURE, 0, "elf_strptr: %s",
+					elf_errmsg(-1));
+		if (strncmp(name, LUA_WRAPPER_SECTION_PREFIX,
+				strlen(LUA_WRAPPER_SECTION_PREFIX)) == 0) {
+			/* store the section */
+			if (debug)
+				printf("store section %s\n", name);
+			nb_scripts++;
+			*scripts = realloc(*scripts,
+					(nb_scripts + 1) *
+					sizeof(struct lua_script));
+			if (*scripts == NULL)
+				error(EXIT_FAILURE, errno, "realloc");
+			/* TODO check allocs */
+			script = *scripts + (nb_scripts - 1);
+			script->name = strdup(name +
+					strlen(LUA_WRAPPER_SECTION_PREFIX));
+			script->code = calloc(shdr.sh_size + 1, 1);
 
-	return nb_scripts - 1;
+			script->code[shdr.sh_size] = '\0';
+			data = NULL;
+			i = 0;
+			while (i < shdr.sh_size &&
+					(data = elf_getdata(scn, data)) != NULL) {
+				p = (char *)data->d_buf;
+				while (p < (char *)data->d_buf + data->d_size) {
+					script->code[i] = *p;
+					i++;
+					p++;
+				}
+			}
+			remove_shebang(script->code);
+			// TODO remove the replace_dots once naming the section
+			// is possible
+			replace_dots_with_underscores(script->name);
+		}
+	}
+
+	elf_end(e);
+	close(fd);
+
+	/* NULL guard */
+	(*scripts)[nb_scripts].code = (*scripts)[nb_scripts].name = NULL;
+
+	return nb_scripts;
 }
 
 /**
@@ -407,6 +427,7 @@ static void free_scripts(struct lua_script **scripts)
 
 	do {
 		free(script->name);
+		free(script->code);
 	} while((++script)->name != NULL);
 
 	free(*scripts);
