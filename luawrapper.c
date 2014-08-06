@@ -6,15 +6,12 @@
  * @author nicolas.carrier@parrot.com
  * @copyright Copyright (C) 2013 Parrot S.A.
  */
-/* TODO cleanup headers */
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <inttypes.h>
 #include <error.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
