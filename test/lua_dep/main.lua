@@ -1,5 +1,5 @@
 #!/usr/bin/lua
 
-foo = require "foo"
+plop = require "plop"
 
-foo.foo()
+plop.foo()

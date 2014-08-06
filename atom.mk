@@ -55,7 +55,7 @@ $(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
-	$(LOCAL_PATH)/test/lua_dep/foo.lua \
+	plop:$(LOCAL_PATH)/test/lua_dep/foo.lua \
 	$(LOCAL_PATH)/test/lua_dep/main.lua
 
 LOCAL_LDFLAGS := -static -lm
