@@ -1,15 +1,15 @@
 LOCAL_PATH := $(call my-dir)
 
 ###############################################################################
-# luawrapper-no_dep
+# luawrapper
 ###############################################################################
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := luawrapper-no_dep
-LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with no\
-	dependency
-LOCAL_CATEGORY_PATH := demo
+LOCAL_MODULE := luawrapper
+LOCAL_DESCRIPTION := Static library for building an autonomous executable from \
+	a lua script and it's dependencies
+LOCAL_CATEGORY_PATH := scripting/lua
 
 $(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 
@@ -19,7 +19,6 @@ LOCAL_GENERATED_SRC_FILES := \
 	libelf_convert.c
 
 LOCAL_SRC_FILES := luawrapper.c \
-	test/no_dep/lw_dependencies.c \
 	$(call all-c-files-under,lua) \
 	$(call all-c-files-under,libelf)
 
@@ -29,16 +28,16 @@ LOCAL_CUSTOM_TARGETS := \
 LOCAL_PREREQUISITES := $(LOCAL_CUSTOM_TARGETS)
 
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
-$(LOCAL_MODULE)_dependencies := \
-	$($(LOCAL_MODULE)) \
-	$(LOCAL_PATH)/test/no_dep/main.lua
-
-LOCAL_LDFLAGS := -static -lm
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/libelf/ \
 	$(LOCAL_PATH)/libelf/common/ \
 	$($(LOCAL_MODULE)_BUILD_DIR)
+
+LOCAL_EXPORT_C_INCLUDES := \
+	$(LOCAL_PATH)
+
+LOCAL_EXPORT_LDFLAGS := -static -lm
 
 $($(LOCAL_MODULE)_BUILD_DIR)/libelf_msize.c:$(LOCAL_PATH)/libelf/libelf_msize.m4
 	$(Q) echo "generate m4 generated $@ for $(PRIVATE_MODULE)"
@@ -56,6 +55,29 @@ $($(LOCAL_MODULE)_BUILD_DIR)/native-elf-format.h:
 	$(Q) echo "generate target specific header for $(PRIVATE_MODULE)"
 	$(Q) LANG=C $(PRIVATE_PATH)/libelf/common/native-elf-format > $@
 
+include $(BUILD_STATIC_LIBRARY)
+
+###############################################################################
+# luawrapper-no_dep
+###############################################################################
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := luawrapper-no_dep
+LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with no\
+	dependency
+LOCAL_CATEGORY_PATH := demo
+
+$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
+
+LOCAL_SRC_FILES := \
+	test/no_dep/lw_dependencies.c
+
+$(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
+$(LOCAL_MODULE)_dependencies := \
+	$($(LOCAL_MODULE)) \
+	$(LOCAL_PATH)/test/no_dep/main.lua
+
 define LOCAL_CMD_PRE_INSTALL
 	@echo "generate full wrapper for $(PRIVATE_MODULE)"
 	$(Q) TARGET_OBJCOPY=$(TARGET_OBJCOPY) \
@@ -63,6 +85,8 @@ define LOCAL_CMD_PRE_INSTALL
 		$($(PRIVATE_MODULE)_dependencies)
 	$(Q) mv $($(PRIVATE_MODULE)).tmp $($(PRIVATE_MODULE))
 endef
+
+LOCAL_LIBRARIES := luawrapper
 
 include $(BUILD_EXECUTABLE)
 
@@ -77,21 +101,16 @@ LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with a \
 	lua dependency
 LOCAL_CATEGORY_PATH := demo
 
-LOCAL_SRC_FILES := luawrapper.c \
-	test/lua_dep/lw_dependencies.c \
-	$(call all-c-files-under,lua)
-
 $(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
+
+LOCAL_SRC_FILES := \
+	test/lua_dep/lw_dependencies.c
+
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
 	plop:$(LOCAL_PATH)/test/lua_dep/foo.lua \
 	$(LOCAL_PATH)/test/lua_dep/main.lua
-
-LOCAL_LDFLAGS := -static -lm
-
-# TODO replace by an embedded libelf
-LOCAL_LIBRARIES := libelf
 
 define LOCAL_CMD_PRE_INSTALL
 	@echo "generate full wrapper for $(PRIVATE_MODULE)"
@@ -100,6 +119,8 @@ define LOCAL_CMD_PRE_INSTALL
 		$($(PRIVATE_MODULE)_dependencies)
 	$(Q) mv $($(PRIVATE_MODULE)).tmp $($(PRIVATE_MODULE))
 endef
+
+LOCAL_LIBRARIES := luawrapper
 
 include $(BUILD_EXECUTABLE)
 
@@ -114,22 +135,17 @@ LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with a \
 	lua dependency and a C dependency
 LOCAL_CATEGORY_PATH := demo
 
-LOCAL_SRC_FILES := luawrapper.c \
-	test/both_dep/lw_dependencies.c \
-	test/both_dep/bar.c \
-	$(call all-c-files-under,lua)
-
 $(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
+
+LOCAL_SRC_FILES := \
+	test/both_dep/bar.c \
+	test/both_dep/lw_dependencies.c
+
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
 	$(LOCAL_PATH)/test/both_dep/foo.lua \
 	$(LOCAL_PATH)/test/both_dep/main.lua
-
-LOCAL_LDFLAGS := -static -lm
-
-# TODO replace by an embedded libelf
-LOCAL_LIBRARIES := libelf
 
 define LOCAL_CMD_PRE_INSTALL
 	@echo "generate full wrapper for $(PRIVATE_MODULE)"
@@ -138,5 +154,7 @@ define LOCAL_CMD_PRE_INSTALL
 		$($(PRIVATE_MODULE)_dependencies)
 	$(Q) mv $($(PRIVATE_MODULE)).tmp $($(PRIVATE_MODULE))
 endef
+
+LOCAL_LIBRARIES := luawrapper
 
 include $(BUILD_EXECUTABLE)
