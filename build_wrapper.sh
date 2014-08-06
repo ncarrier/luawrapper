@@ -1,28 +1,36 @@
-#!/bin/sh
+#!/bin/bash
 
-# TODO update documentation
-
-# Script for embedding a lua script into a launcher for the script, in order to
-# allow to build a fully autonomous, statically "compiled" script. The final
-# wrapped "script" is written to standard output, or to the file passed in the
-# -o option. Dependencies don't need to be ordered, they are loaded when needed.
+# Script for embedding a lua script with it's lua dependencies, into a launcher
+# for the script, in order to allow to build a fully autonomous, statically
+# "compiled" script. Dependencies don't need to be ordered, they are loaded on
+# the fly.
 #
-# The layout of the output file is the following, sizes in bytes :
-#
-# +----------+--------+--------+------+- ... -+------+--------+------+------+---------+
-# | header   |  lua dependency modules   ...  |   main lua program   |     footer     |
-# +----------+--------+--------+------+- ... -+------+--------+------+------+---------+
-# | launcher | SIZE_1 | mod. 1 | lua  |  ...  | SIZE | script | lua  | stop | launch. |
-# |          |        | name   | code |  ...  |      |  name  | code |      | size LS |
-# +----------+--------+--------+------+- ... -+------+--------+------+------+---------+
-# |    LS    |          SIZE_1        |  ...  |         SIZE         |  8   |    8    |
-# +----------+------------------------+- ... -+----------------------+------+---------+
-#
-# All sizes are unsigned and written in 8 bytes, big endian.
-# Strings end with one nul byte.
-# All sizes of lua scripts do count the SIZE_X an script name.
+# Objcopy is used to add sections containing the lua scripts. The sections names
+# are the corresponding module name, prefixed by lw_.
 
 #set -x
+set -e
+
+function usage {
+	echo "usage : $(basename ${command}) -h"
+	echo -e "\t\tDisplays this help."
+		echo "        $(basename ${command}) [-o OUTPUT] LAUNCHER [LUA_DEP1 \
+[LUA_DEP2 ... ]] SCRIPT"
+	echo -e "\t\tCreates an autonomous executable from a lua script and it's \
+dependencies."
+	echo -e "\t\tOUTPUT: resulting executable's path, default is lw.out."
+	echo -e "\t\tLAUNCHER: path to the precompiled luawrapper."
+	echo -e "\t\tLUA_DEPX and SCRIPT are paths to the lua scripts to embed, \
+SCRIPT being the main script which will be directly executed. To choose the \
+module name associated to a script (the parameter to _require_) one can use the\
+ syntax name:path. If no name is given, then the script's basename is used as \
+the module name. The module name can't contain '/' or ':'."
+	exit $1
+}
+
+if [ "$1" = "-h" ]; then
+	usage 0
+fi
 
 if [ "$1" = "-o" ]; then
 	shift
@@ -34,19 +42,34 @@ fi
 rm -f $output
 echo "output to file $output"
 
+command=$0
 launcher=$1
 first_lua_file=$2
 
-if [ ! -f "${launcher}" ] || [ ! -f "${first_lua_file}" ]; then
-	echo "usage : build_wrapper.sh [-o output_file] launcher [lua_deps] script"
-	echo "\tif -o is omitted, the result is written to standard output"
-	exit 1
+if [ ! -f "${launcher}" ]; then
+	echo "launcher '${script}' not found"
+	usage 1
 fi
 
 shift
 cp -f ${launcher} ${output}
 for script in "$@" ; do
-	name="lw_$(basename $script | sed 's/\.lua*//g')"
+	# try to match the pattern name:path, if no match, use basename as the name
+	pattern='^([^:/]+):(.*)$'
+	if [[ ${script} =~ ${pattern} ]]; then
+		name=lw_${BASH_REMATCH[1]}
+		script=${BASH_REMATCH[2]}
+	else
+		pattern='^.*/([^/]+)\.lua$'
+		[[ ${script} =~ ${pattern} ]]
+		name="lw_${BASH_REMATCH[1]}"
+	fi
+
+	if [ ! -f "${script}" ]; then
+		echo "script '${script}' not found"
+		usage 1
+	fi
+
 	echo "add section ${name} for ${script}"
 	${TARGET_OBJCOPY} --add-section ${name}=${script} ${output} ${output}
 done
