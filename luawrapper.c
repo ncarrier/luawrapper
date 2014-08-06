@@ -361,13 +361,12 @@ static void install_lua_preloaders(lua_State *L,
 /**
  * Executes the main script.
  * @param L lua state
- * @param script Main script
+ * @param script code of the main script
  * @param argc number of arguments to pass to the script
  * @param argv vector of the arguments to pass
  * @return the main script's return status
  */
-static int run_script(lua_State *L, const struct lua_script *script, int argc,
-		char *argv[])
+static int run_script(lua_State *L, const char *code, int argc, char *argv[])
 {
 	int err;
 	int res;
@@ -387,7 +386,7 @@ static int run_script(lua_State *L, const struct lua_script *script, int argc,
 	lua_setfield(L, -2, "arg");
 
 	/* load the main script and pass it the content of arg */
-	err = luaL_loadstring(L, script->code);
+	err = luaL_loadstring(L, code);
 	if (err != LUA_OK)
 		error(EXIT_FAILURE, 0, "can't load lua module: %s",
 				lua_tostring(L, -1));
@@ -421,7 +420,8 @@ static void free_scripts(struct lua_script **scripts)
 
 	do {
 		free(script->name);
-		free(script->code);
+		if (script->code)
+			free(script->code);
 	} while((++script)->name != NULL);
 
 	free(*scripts);
@@ -440,7 +440,7 @@ static int pmain(lua_State *L)
 	char **argv = lua_touserdata(L, 2);
 	struct lua_script *scripts;
 	int nb_scripts;
-	struct lua_script main_script;
+	char *main_script;
 
 	lua_pop(L, 2);
 	/* stack is empty */
@@ -449,21 +449,17 @@ static int pmain(lua_State *L)
 	if (debug)
 		printf("%d lua scripts embedded, counting main\n", nb_scripts);
 
-	main_script = scripts[nb_scripts -1];
-	scripts[nb_scripts -1].code = scripts[nb_scripts -1].name = NULL;
+	/* we take the ownership of the main script code */
+	main_script = scripts[nb_scripts -1].code;
+	scripts[nb_scripts -1].code = NULL;
+
+	/* install built-in, C and lua dependencies */
 	luaL_openlibs(L);
 	install_c_preloaders(L);
 	install_lua_preloaders(L, scripts);
-
-	res = run_script(L, &main_script, argc, argv);
-
-	/*
-	 * TODO this line is annoying, it prevents free_scripts from being
-	 * called directly after install_lua_preloaders
-	 */
-	scripts[nb_scripts -1] = main_script;
 	free_scripts(&scripts);
 
+	res = run_script(L, main_script, argc, argv);
 	lua_pushinteger(L, res);
 
 	return 1;
