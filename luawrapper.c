@@ -96,20 +96,6 @@ static void remove_shebang(char *code)
 	/* don't strip the newline char so that the line indexes don't change */
 }
 
-/**
- * Modifies the name passed so that each dots are replaced by underscores
- * @param name name to modify
- */
-static void replace_dots_with_underscores(char *name)
-{
-	char *c = name + strlen(name);
-
-	do {
-		if (*c == '_')
-			*c = '.';
-	} while (--c > name);
-}
-
 /* dumps a stack non-recursively, printing only the type of complex elements */
 __attribute__((unused))
 static void stack_dump(lua_State *L)
@@ -182,8 +168,6 @@ static void load_script(struct lua_script *script, Elf_Scn *scn,
 		}
 	}
 	remove_shebang(script->code);
-	// TODO remove the replace_dots once naming the section is possible
-	replace_dots_with_underscores(script->name);
 }
 
 /**
@@ -476,6 +460,10 @@ static int pmain(lua_State *L)
 
 	res = run_script(L, &main_script, argc, argv);
 
+	/*
+	 * TODO this line is annoying, it prevents free_scripts from being
+	 * called directly after install_lua_preloaders
+	 */
 	scripts[nb_scripts -1] = main_script;
 	free_scripts(&scripts);
 
