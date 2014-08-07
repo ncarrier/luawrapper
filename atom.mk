@@ -37,7 +37,7 @@ LOCAL_C_INCLUDES := \
 LOCAL_EXPORT_C_INCLUDES := \
 	$(LOCAL_PATH)
 
-LOCAL_EXPORT_LDFLAGS := -static -lm
+LOCAL_EXPORT_LDLIBS := -static -lm
 
 $($(LOCAL_MODULE)_BUILD_DIR)/libelf_msize.c:$(LOCAL_PATH)/libelf/libelf_msize.m4
 	$(Q) echo "generate m4 generated $@ for $(PRIVATE_MODULE)"
