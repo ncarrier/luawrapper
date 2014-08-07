@@ -11,7 +11,6 @@ LOCAL_DESCRIPTION := Static library for building an autonomous executable from \
 	a lua script and it's dependencies
 LOCAL_CATEGORY_PATH := scripting/lua
 
-$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 
 LOCAL_GENERATED_SRC_FILES := \
 	libelf_msize.c \
@@ -22,6 +21,7 @@ LOCAL_SRC_FILES := luawrapper.c \
 	$(call all-c-files-under,lua) \
 	$(call all-c-files-under,libelf)
 
+$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 LOCAL_CUSTOM_TARGETS := \
 	$(LOCAL_GENERATED_SRC_FILES) \
 	$($(LOCAL_MODULE)_BUILD_DIR)/native-elf-format.h
@@ -68,11 +68,10 @@ LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with no\
 	dependency
 LOCAL_CATEGORY_PATH := demo
 
-$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
-
 LOCAL_SRC_FILES := \
 	test/no_dep/lw_dependencies.c
 
+$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
@@ -101,11 +100,10 @@ LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with a \
 	lua dependency
 LOCAL_CATEGORY_PATH := demo
 
-$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
-
 LOCAL_SRC_FILES := \
 	test/lua_dep/lw_dependencies.c
 
+$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
@@ -135,12 +133,11 @@ LOCAL_DESCRIPTION := Demonstration of building an autonomous lua script with a \
 	lua dependency and a C dependency
 LOCAL_CATEGORY_PATH := demo
 
-$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
-
 LOCAL_SRC_FILES := \
 	test/both_dep/bar.c \
 	test/both_dep/lw_dependencies.c
 
+$(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 $(LOCAL_MODULE)_dependencies := \
 	$($(LOCAL_MODULE)) \
