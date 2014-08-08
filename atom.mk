@@ -11,7 +11,6 @@ LOCAL_DESCRIPTION := Static library for building an autonomous executable from \
 	a lua script and it's dependencies
 LOCAL_CATEGORY_PATH := scripting/lua
 
-
 LOCAL_GENERATED_SRC_FILES := \
 	libelf_msize.c \
 	libelf_fsize.c \
@@ -22,10 +21,11 @@ LOCAL_SRC_FILES := luawrapper.c \
 	$(call all-c-files-under,libelf)
 
 $(LOCAL_MODULE)_BUILD_DIR := $(call local-get-build-dir)
+# no need to put native-elf-format.h, because it is already in prerequisites
 LOCAL_CUSTOM_TARGETS := \
-	$(LOCAL_GENERATED_SRC_FILES) \
+	$(LOCAL_GENERATED_SRC_FILES)
+LOCAL_PREREQUISITES := \
 	$($(LOCAL_MODULE)_BUILD_DIR)/native-elf-format.h
-LOCAL_PREREQUISITES := $(LOCAL_CUSTOM_TARGETS)
 
 $(LOCAL_MODULE) := $($(LOCAL_MODULE)_BUILD_DIR)/$(LOCAL_MODULE)
 
@@ -39,20 +39,12 @@ LOCAL_EXPORT_C_INCLUDES := \
 
 LOCAL_EXPORT_LDLIBS := -static -lm
 
-$($(LOCAL_MODULE)_BUILD_DIR)/libelf_msize.c:$(LOCAL_PATH)/libelf/libelf_msize.m4
-	$(Q) echo "generate m4 generated $@ for $(PRIVATE_MODULE)"
-	$(Q) (cd $(PRIVATE_PATH)/libelf/; m4 -D SRCDIR=. $^ > $@)
-
-$($(LOCAL_MODULE)_BUILD_DIR)/libelf_fsize.c:$(LOCAL_PATH)/libelf/libelf_fsize.m4
-	$(Q) echo "generate m4 generated $@ for $(PRIVATE_MODULE)"
-	$(Q) (cd $(PRIVATE_PATH)/libelf/; m4 -D SRCDIR=. $^ > $@)
-
-$($(LOCAL_MODULE)_BUILD_DIR)/libelf_convert.c:$(LOCAL_PATH)/libelf/libelf_convert.m4
+$($(LOCAL_MODULE)_BUILD_DIR)/libelf_%.c: $(LOCAL_PATH)/libelf/libelf_%.m4
 	$(Q) echo "generate m4 generated $@ for $(PRIVATE_MODULE)"
 	$(Q) (cd $(PRIVATE_PATH)/libelf/; m4 -D SRCDIR=. $^ > $@)
 
 $($(LOCAL_MODULE)_BUILD_DIR)/native-elf-format.h:
-	$(Q) echo "generate target specific header for $(PRIVATE_MODULE)"
+	$(Q) echo "generate target specific header $@ for $(PRIVATE_MODULE)"
 	$(Q) LANG=C $(PRIVATE_PATH)/libelf/common/native-elf-format > $@
 
 include $(BUILD_STATIC_LIBRARY)
