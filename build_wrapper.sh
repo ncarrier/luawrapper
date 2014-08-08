@@ -11,6 +11,8 @@
 #set -x
 set -e
 
+objcopy=${TARGET_OBJCOPY:-objcopy}
+
 function usage {
 	echo "usage : $(basename ${command}) -h"
 	echo -e "\t\tDisplays this help."
@@ -40,7 +42,7 @@ else
 	output="lw.out"
 fi
 rm -f $output
-echo "output to file $output"
+echo "output to file ${output}, using ${objcopy}"
 
 command=$0
 launcher=$1
@@ -71,5 +73,5 @@ for script in "$@" ; do
 	fi
 
 	echo "add section ${name} for ${script}"
-	${TARGET_OBJCOPY} --add-section ${name}=${script} ${output} ${output}
+	${objcopy} --add-section ${name}=${script} ${output} ${output}
 done
