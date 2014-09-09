@@ -20,7 +20,8 @@ function usage {
 [LUA_DEP2 ... ]] SCRIPT"
 	echo -e "\t\tCreates an autonomous executable from a lua script and it's \
 dependencies."
-	echo -e "\t\tOUTPUT: resulting executable's path, default is lw.out."
+	echo -e "\t\tOUTPUT: resulting executable's path, default is to modify \
+LAUNCHER in place."
 	echo -e "\t\tLAUNCHER: path to the precompiled luawrapper."
 	echo -e "\t\tLUA_DEPX and SCRIPT are paths to the lua scripts to embed, \
 SCRIPT being the main script which will be directly executed. To choose the \
@@ -39,9 +40,8 @@ if [ "$1" = "-o" ]; then
 	output=$1
 	shift
 else
-	output="lw.out"
+	output=$1
 fi
-rm -f $output
 echo "output to file ${output}, using ${objcopy}"
 
 command=$0
@@ -49,12 +49,14 @@ launcher=$1
 first_lua_file=$2
 
 if [ ! -f "${launcher}" ]; then
-	echo "launcher '${script}' not found"
+	echo "launcher '${launcher}' not found"
 	usage 1
+fi
+if [ ${launcher} != ${output} ]; then
+	cp -f ${launcher} ${output}
 fi
 
 shift
-cp -f ${launcher} ${output}
 for script in "$@" ; do
 	# try to match the pattern name:path, if no match, use basename as the name
 	pattern='^([^:/]+):(.*)$'
