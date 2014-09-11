@@ -1,9 +1,9 @@
-# list of the tests to build
-tests := both_dep \
+# list of the examples to build
+examples := both_dep \
 	lua_dep \
 	no_dep
 
-# dependencies for each test
+# dependencies for each example
 both_dep_OBJS := both_dep/bar.o
 both_dep_LUA_DEPS := both_dep/foo.lua \
 	both_dep/main.lua

@@ -6,9 +6,9 @@ CPPFLAGS += \
             -I../src/lua/
 Q        ?= @
 
-include tests.mk
+include examples.mk
 
-bin := $(foreach t,$(tests),$(t)/$(t))
+bin := $(foreach t,$(examples),$(t)/$(t))
 
 all: $(bin)
 
