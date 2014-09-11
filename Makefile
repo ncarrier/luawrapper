@@ -29,6 +29,8 @@ luawrapper_gen_src := \
 	src/libelf/libelf_fsize.c \
 	src/libelf/libelf_convert.c
 
+.SECONDARY: $(luawrapper_gen_src)
+
 luawrapper_src := \
 	$(shell find src -name *.c) \
 	$(luawrapper_gen_src)
@@ -39,18 +41,26 @@ luawrapper_clean_files := \
 	$(luawrapper_gen_src) \
 	native-elf-format.h \
 	luawrapper.a \
-	$(luawrapper_objects)
+	$(luawrapper_objects) \
+	$(luawrapper_src:.c=.d)
 
 all: luawrapper.a
 
+native-elf-format.h:
+	@echo generate platform dependant header $@
+	$(Q) LANG=C src/libelf/common/native-elf-format > $@
+
+-include $(luawrapper_src:.c=.d)
+
+%.d: %.c
+	$(Q) set -e; rm -f $@; \
+	$(CC) -MM -MG $(CPPFLAGS) $< | \
+		sed 's,\(^[^:]*\):,$(dir $@)\1 $@ : ,g' > $@; \
+
 # TODO tester $?
 luawrapper.a: $(luawrapper_objects)
+	@echo creation of $@
 	$(Q) $(AR) cr $@ $^
-
-$(luawrapper_objects): native-elf-format.h
-
-native-elf-format.h:
-	$(Q) LANG=C src/libelf/common/native-elf-format > $@
 
 src/libelf/libelf_%.c: src/libelf/libelf_%.m4
 	@echo "generate m4 generated $@ for luawrapper"
