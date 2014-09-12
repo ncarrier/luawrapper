@@ -44,7 +44,7 @@ luawrapper_clean_files := \
 	$(luawrapper_objects) \
 	$(luawrapper_src:.c=.d)
 
-all: luawrapper.a
+all: luawrapper.a examples
 
 native-elf-format.h:
 	@echo generate platform dependant header $@
@@ -66,13 +66,15 @@ src/libelf/libelf_%.c: src/libelf/libelf_%.m4
 	@echo "generate m4 generated $@ for luawrapper"
 	$(Q) (cd src/libelf/; m4 -D SRCDIR=. $(notdir $^) > $(notdir $@))
 
+examples: luawrapper.a
+	$(MAKE) -C examples
+
 clean:
 	$(Q) -rm -f $(luawrapper_clean_files) &>/dev/null
+	$(MAKE) -C examples clean
 
-# TODO
 check: all
-	./jupiter | grep "Hello from .*jupiter!"
-	@echo "*** All TESTS PASSED"
+	$(MAKE) -C examples check
 
 install:
 	install -d $(DESTDIR)$(libdir)
@@ -115,4 +117,4 @@ FORCE:
 	-rm -rf $(distdir) &>/dev/null
 	-rm $(distdir).tar.gz &>/dev/null
 
-.PHONY: FORCE all clean check dist distcheck install uninstall
+.PHONY: FORCE all examples clean check dist distcheck install uninstall
