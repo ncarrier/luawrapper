@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <error.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -239,7 +240,9 @@ static int load_scripts(struct lua_script **scripts)
 	close(fd);
 
 	/* NULL guard */
-	(*scripts)[nb_scripts].code = (*scripts)[nb_scripts].name = NULL;
+	if (nb_scripts != 0)
+		(*scripts)[nb_scripts].code = (*scripts)[nb_scripts].name =
+				NULL;
 
 	return nb_scripts;
 }
@@ -448,6 +451,9 @@ static int pmain(lua_State *L)
 	nb_scripts = load_scripts(&scripts);
 	if (debug)
 		printf("%d lua scripts embedded, counting main\n", nb_scripts);
+	if (nb_scripts == 0)
+		error(EXIT_FAILURE, 0, "no embedded lua script, run "
+				"build_wrapper.sh");
 
 	/* we take the ownership of the main script code */
 	main_script = scripts[nb_scripts -1].code;
