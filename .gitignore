@@ -1,2 +1,13 @@
 .cproject
 .project
+*.o
+*.d
+*.tar.gz
+*.a
+native-elf-format.h
+src/libelf/libelf_convert.c
+src/libelf/libelf_fsize.c
+src/libelf/libelf_msize.c
+examples/both_dep/both_dep
+examples/lua_dep/lua_dep
+examples/no_dep/no_dep
