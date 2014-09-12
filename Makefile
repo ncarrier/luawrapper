@@ -93,9 +93,12 @@ $(distdir):
 	mkdir -p $(distdir)/src/libelf/common
 	mkdir -p $(distdir)/src/lua
 	mkdir -p $(distdir)/include
+	mkdir -p $(distdir)/examples/both_dep
+	mkdir -p $(distdir)/examples/lua_dep
+	mkdir -p $(distdir)/examples/no_dep
 	cp Makefile $(distdir)
+	cp build_wrapper.sh $(distdir)
 	cp include/lw_dependencies.h $(distdir)/include
-	cp src/Makefile $(distdir)/src
 	cp src/luawrapper.c $(distdir)/src
 	cp src/lua/*.c $(distdir)/src/lua
 	cp src/lua/*.h $(distdir)/src/lua
@@ -104,6 +107,14 @@ $(distdir):
 	cp src/libelf/*.m4 $(distdir)/src/libelf
 	cp src/libelf/common/*.h $(distdir)/src/libelf/common
 	cp src/libelf/common/native-elf-format $(distdir)/src/libelf/common
+	cp examples/Makefile $(distdir)/examples
+	cp examples/examples.mk $(distdir)/examples
+	cp examples/both_dep/*.c $(distdir)/examples/both_dep
+	cp examples/both_dep/*.lua $(distdir)/examples/both_dep
+	cp examples/no_dep/*.c $(distdir)/examples/no_dep
+	cp examples/no_dep/*.lua $(distdir)/examples/no_dep
+	cp examples/lua_dep/*.c $(distdir)/examples/lua_dep
+	cp examples/lua_dep/*.lua $(distdir)/examples/lua_dep
 
 distcheck: $(distdir).tar.gz
 	gzip -cd $+ | tar xvf -
