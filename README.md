@@ -12,7 +12,7 @@ must be wrapped into it. For this purpose, one must use the build_wrapper
 provided. It will store the lua dependencies in elf sections in the wrapper, in
 a way suitable for it to retrieve them.
 
-usage: 
+usage:
 
 ./build_wrapper.sh -o outfile luawrapper dep1.lua dep2.lua [...] main.lua
 
