@@ -3,8 +3,7 @@
  * @brief 
  *
  * @date 6 août 2014
- * @author nicolas.carrier@parrot.com
- * @copyright Copyright (C) 2013 Parrot S.A.
+ * @author carrier.nicolas0@gmail.com
  */
 #include <lauxlib.h>
 #include <lua.h>

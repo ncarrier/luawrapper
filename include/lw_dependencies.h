@@ -5,8 +5,7 @@
  * updated to list them all.
  *
  * @date 24 juin 2014
- * @author nicolas.carrier@parrot.com
- * @copyright Copyright (C) 2013 Parrot S.A.
+ * @author carrier.nicolas0@gmail.com
  */
 
 #ifndef LW_DEPENDENCIES_H_

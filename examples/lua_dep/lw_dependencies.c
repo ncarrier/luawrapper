@@ -4,8 +4,7 @@
  * library is added. For this test, no C dependency is needed
  *
  * @date 27 july 2014
- * @author nicolas.carrier@parrot.com
- * @copyright Copyright (C) 2013 Parrot S.A.
+ * @author carrier.nicolas0@gmail.com
  */
 #include <stdlib.h>
 
