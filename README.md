@@ -22,9 +22,10 @@ they C, or lua, are loaded on demand, i.e. when they are "require"-d.
 
 ### With the provided build system
 
-The test directory contains some use cases which can be used as examples. These
-can be modified or a new example can be created easily by tweaking examples.mk
-and adding the corresponding directory and files in the examples folder.
+The **examples** directory contains some use cases which can be used as
+examples. These can be modified or a new example can be created easily by
+tweaking examples.mk and adding the corresponding directory and files in the
+examples folder.
 
 The process to do this by hand is explained in the following sections.
 
